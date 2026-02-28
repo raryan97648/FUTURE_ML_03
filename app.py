@@ -116,7 +116,7 @@ if st.button("🚀 Execute ML Screening"):
                         pdf_bytes = generate_pdf_report(jd_txt, target_skills, results)
                         st.download_button(
                             label="📄 Download Full PDF Report",
-                            data=pdf_bytes,
+                            data=bytes(pdf_bytes) if isinstance(pdf_bytes, bytearray) else (pdf_bytes.encode('latin-1') if isinstance(pdf_bytes, str) else pdf_bytes),
                             file_name=f"Screening_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
                             mime="application/pdf"
                         )
@@ -124,40 +124,44 @@ if st.button("🚀 Execute ML Screening"):
                         st.error(f"Reporting Error: {e}")
                 
                 # Visual highlight
-                top_cand = df_filtered.iloc[0]
-                h_col1, h_col2, h_col3 = st.columns(3)
-                h_col1.metric("Top Fit", top_cand["Candidate"], f"{top_cand['Rank Score']}%")
-                h_col2.metric("Dominant Role", top_cand["Predicted Role"], f"{top_cand['ML Conf %']}% Conf")
-                h_col3.metric("Talent Pool", f"{len(df)} Resumes", "Processed")
+                if not df_filtered.empty:
+                    top_cand = df_filtered.iloc[0]
+                    h_col1, h_col2, h_col3 = st.columns(3)
+                    h_col1.metric("Top Fit", top_cand["Candidate"], f"{top_cand['Rank Score']}%")
+                    h_col2.metric("Dominant Role", top_cand["Predicted Role"], f"{top_cand['ML Conf %']}% Conf")
+                    h_col3.metric("Talent Pool", f"{len(df)} Resumes", "Processed")
 
-                st.dataframe(df_filtered.drop(columns=["Skills", "Gaps"]), use_container_width=True)
-                
-                # Skill Gap Detail
-                st.subheader("💡 Deep Dive: Skill Gaps")
-                for _, row in df_filtered.iterrows():
-                    with st.expander(f"Analysis: {row['Candidate']} (Score: {row['Rank Score']})"):
-                        c_a, c_b = st.columns(2)
-                        with c_a:
-                            st.markdown("**Skills Found:**")
-                            if row['Skills']:
-                                for s in row['Skills']: st.markdown(f'<span class="skill-chip">{s}</span>', unsafe_allow_html=True)
-                            else: st.write("None detected.")
-                        with c_b:
-                            st.markdown("**Missing Skills:**")
-                            if row['Gaps']:
-                                for g in row['Gaps']: st.markdown(f'<span class="gap-chip">{g}</span>', unsafe_allow_html=True)
-                            else: st.success("No critical skill gap!")
-                
-                # Chart
-                st.subheader("📈 Competitive Landscape")
-                fig, ax = plt.subplots(figsize=(10, 5))
-                fig.patch.set_facecolor('#0f172a')
-                ax.set_facecolor('#1e293b')
-                sns.barplot(x="Rank Score", y="Candidate", data=df_filtered, palette="flare", ax=ax)
-                ax.tick_params(colors='white')
-                ax.xaxis.label.set_color('white')
-                ax.yaxis.label.set_color('white')
-                st.pyplot(fig)
+                    st.dataframe(df_filtered.drop(columns=["Skills", "Gaps"]), use_container_width=True)
+                    
+                    # Skill Gap Detail
+                    st.subheader("💡 Deep Dive: Skill Gaps")
+                    for _, row in df_filtered.iterrows():
+                        with st.expander(f"Analysis: {row['Candidate']} (Score: {row['Rank Score']})"):
+                            c_a, c_b = st.columns(2)
+                            with c_a:
+                                st.markdown("**Skills Found:**")
+                                if row['Skills']:
+                                    for s in row['Skills']: st.markdown(f'<span class="skill-chip">{s}</span>', unsafe_allow_html=True)
+                                else: st.write("None detected.")
+                            with c_b:
+                                st.markdown("**Missing Skills:**")
+                                if row['Gaps']:
+                                    for g in row['Gaps']: st.markdown(f'<span class="gap-chip">{g}</span>', unsafe_allow_html=True)
+                                else: st.success("No critical skill gap!")
+                    
+                    # Chart
+                    st.subheader("📈 Competitive Landscape")
+                    fig, ax = plt.subplots(figsize=(10, 5))
+                    fig.patch.set_facecolor('#0f172a')
+                    ax.set_facecolor('#1e293b')
+                    sns.barplot(x="Rank Score", y="Candidate", data=df_filtered, palette="flare", ax=ax)
+                    ax.tick_params(colors='white')
+                    ax.xaxis.label.set_color('white')
+                    ax.yaxis.label.set_color('white')
+                    st.pyplot(fig)
+                else:
+                    st.warning(f"No candidates met the minimum match threshold of {min_match}%.")
+                    st.dataframe(df.drop(columns=["Skills", "Gaps"]), use_container_width=True)
             else:
                 st.warning("Could not extract enough data for ranking.")
 
